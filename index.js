@@ -2,15 +2,13 @@ const express = require('express')
 const cors = require('cors')
 const app = express();
 const jwt = require('jsonwebtoken')
+const cookieParser = require('cookie-parser')
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 
 // middleware 
-app.use(cors({
-    origin: ['http://localhost:5173'],
-    credentials: true
-}));
+app.use(cors());
 app.use(express.json());
 
 
@@ -35,10 +33,9 @@ async function run() {
 
         // JWT related API
         app.post('/jwt', async (req, res) => {
-            const { email } = req.body;
-            const user = { email }
-            const token = jwt.sign(user, process.env.JWT_ACCESS_SECRET, { expiresIn: '1h' });
-            res.send({ token })
+            const userData = req.body;
+            const token = jwt.sign(userData, process.env.JWT_ACCESS_SECRET, { expiresIn: '1d' })
+            res.send({ success: true })
         })
 
         // Job Related API's
@@ -54,7 +51,6 @@ async function run() {
             const result = await cursor.toArray();
             res.send(result)
         })
-
 
         app.get('/jobs/:id', async (req, res) => {
             const id = req.params.id;
