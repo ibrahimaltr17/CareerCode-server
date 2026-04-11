@@ -27,10 +27,9 @@ const verifyToken = (req, res, next) => {
         if (error) {
             return res.status(401).send({ message: 'Unauthorized access' })
         }
-        console.log(decoded)
+        req.decoded = decoded
+        next()
     })
-
-    next()
 }
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.gsmun3q.mongodb.net/?appName=Cluster0`;
@@ -91,7 +90,9 @@ async function run() {
         app.get('/applications', verifyToken, async (req, res) => {
             const email = req.query.email;
 
-            // console.log('Inside application API :', req.cookies)
+            if (email !== req.decoded.email) {
+                return res.status(403).send({ message: 'Forbidden access' })
+            }
 
             const query = { email: email }
             const result = await jobApplicationsCollection.find(query).toArray()
