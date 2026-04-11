@@ -8,9 +8,30 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 
 // middleware 
-app.use(cors());
+app.use(cors({
+    origin: ['http://localhost:5173'],
+    credentials: true
+}));
 app.use(express.json());
+app.use(cookieParser())
 
+const verifyToken = (req, res, next) => {
+    const token = req?.cookies?.token;
+    console.log('Cookie in middleware :', token);
+    if (!token) {
+        return res.status(401).send({ message: 'Unauthorized access' })
+    }
+
+    // Verify token
+    jwt.verify(token, process.env.JWT_ACCESS_SECRET, (error, decoded) => {
+        if (error) {
+            return res.status(401).send({ message: 'Unauthorized access' })
+        }
+        console.log(decoded)
+    })
+
+    next()
+}
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.gsmun3q.mongodb.net/?appName=Cluster0`;
 
@@ -35,6 +56,13 @@ async function run() {
         app.post('/jwt', async (req, res) => {
             const userData = req.body;
             const token = jwt.sign(userData, process.env.JWT_ACCESS_SECRET, { expiresIn: '1d' })
+
+            // Set the token in cookie
+            res.cookie('token', token, {
+                httpOnly: true,
+                secure: false,
+            })
+
             res.send({ success: true })
         })
 
@@ -42,6 +70,7 @@ async function run() {
         app.get('/jobs', async (req, res) => {
 
             const email = req.query.email;
+
             const query = {};
             if (email) {
                 query.hr_email = email
@@ -59,8 +88,11 @@ async function run() {
             res.send(result);
         })
 
-        app.get('/applications', async (req, res) => {
+        app.get('/applications', verifyToken, async (req, res) => {
             const email = req.query.email;
+
+            // console.log('Inside application API :', req.cookies)
+
             const query = { email: email }
             const result = await jobApplicationsCollection.find(query).toArray()
 
